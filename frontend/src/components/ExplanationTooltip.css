@@ -1,0 +1,139 @@
+/* Explanation Tooltip Styles */
+
+.explanation-tooltip {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  animation: tooltipFadeIn 0.2s ease-out;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% + 10px));
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%);
+  }
+}
+
+.tooltip-content {
+  background: rgba(30, 30, 30, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 1rem;
+  max-width: 350px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+}
+
+.tooltip-content.severity-critical {
+  border-left: 3px solid #ef4444;
+}
+
+.tooltip-content.severity-moderate {
+  border-left: 3px solid #fbbf24;
+}
+
+.tooltip-content.severity-minor {
+  border-left: 3px solid #3b82f6;
+}
+
+.tooltip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tooltip-type {
+  font-weight: 600;
+  color: #e4e4e4;
+  font-size: 0.9rem;
+  text-transform: capitalize;
+}
+
+.tooltip-severity {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.tooltip-severity.critical {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.tooltip-severity.moderate {
+  background-color: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+}
+
+.tooltip-severity.minor {
+  background-color: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+}
+
+.tooltip-correction {
+  margin-bottom: 0.75rem;
+}
+
+.correction-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  align-items: baseline;
+}
+
+.correction-row:last-child {
+  margin-bottom: 0;
+}
+
+.correction-row .label {
+  font-size: 0.85rem;
+  color: #a0a0a0;
+  min-width: 70px;
+}
+
+.original-text {
+  color: #ef4444;
+  font-family: var(--robo-font-primary);
+  font-size: 0.9rem;
+}
+
+.corrected-text {
+  color: #10b981;
+  font-family: var(--robo-font-primary);
+  font-size: 0.9rem;
+}
+
+.tooltip-explanation {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tooltip-explanation p {
+  margin: 0;
+  color: #d4d4d4;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.tooltip-arrow {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 12px;
+  height: 12px;
+  background: rgba(30, 30, 30, 0.98);
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}

@@ -1,0 +1,66 @@
+/* Import Robocode Font Only */
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&family=Roboto:wght@400;500;600;700;800;900&display=swap');
+
+:root {
+  font-family: 'Roboto Mono', 'Courier New', monospace, system-ui;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #1a1a2e;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  /* Subtle cyber theme variables */
+  --robo-font-primary: 'Roboto Mono', 'Courier New', monospace;
+  --robo-font-secondary: 'Roboto', 'Arial', sans-serif;
+  --robo-accent: #4ade80;
+  --robo-secondary: #22d3ee;
+  --robo-danger: #f472b6;
+  --robo-glow-subtle: 0 0 8px rgba(74, 222, 128, 0.3);
+  --robo-glow-strong: 0 0 15px rgba(74, 222, 128, 0.5);
+  --cyber-bg: #0f172a;
+  --cyber-grid: rgba(74, 222, 128, 0.05);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  font-family: var(--robo-font-primary);
+  background: var(--cyber-bg);
+  color: #e2e8f0;
+  overflow-x: hidden;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  font-family: var(--robo-font-primary);
+}
+
+/* Global font styling only */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--robo-font-primary);
+}
+
+p, span, div, button, input, textarea, select {
+  font-family: var(--robo-font-primary);
+}
+
+button {
+  font-family: var(--robo-font-primary);
+}
+
+input, textarea, select {
+  font-family: var(--robo-font-primary);
+}

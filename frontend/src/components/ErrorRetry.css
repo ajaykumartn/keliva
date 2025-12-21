@@ -1,0 +1,55 @@
+/**
+ * ErrorRetry Styles
+ */
+
+.error-retry {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  min-height: 200px;
+}
+
+.error-retry-content {
+  text-align: center;
+  max-width: 400px;
+}
+
+.error-retry-icon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.error-retry-message {
+  color: #4a5568;
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.error-retry-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.error-retry-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.error-retry-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error-retry-button:active:not(:disabled) {
+  transform: translateY(0);
+}

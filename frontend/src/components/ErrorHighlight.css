@@ -1,0 +1,57 @@
+/* Error Highlight Styles */
+
+.error-highlight-container {
+  width: 100%;
+  min-height: 300px;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #e4e4e4;
+  font-size: 1rem;
+  font-family: var(--robo-font-primary);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-y: auto;
+}
+
+.error-highlight {
+  position: relative;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+}
+
+/* Severity-based styling */
+.error-highlight.severity-critical {
+  background-color: rgba(239, 68, 68, 0.2);
+  border-bottom: 2px wavy #ef4444;
+}
+
+.error-highlight.severity-moderate {
+  background-color: rgba(251, 191, 36, 0.2);
+  border-bottom: 2px wavy #fbbf24;
+}
+
+.error-highlight.severity-minor {
+  background-color: rgba(59, 130, 246, 0.2);
+  border-bottom: 2px wavy #3b82f6;
+}
+
+/* Hover effects */
+.error-highlight:hover {
+  filter: brightness(1.2);
+}
+
+.error-highlight.severity-critical:hover {
+  background-color: rgba(239, 68, 68, 0.3);
+}
+
+.error-highlight.severity-moderate:hover {
+  background-color: rgba(251, 191, 36, 0.3);
+}
+
+.error-highlight.severity-minor:hover {
+  background-color: rgba(59, 130, 246, 0.3);
+}

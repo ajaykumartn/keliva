@@ -1,0 +1,10 @@
+{
+  "counters": {
+    "llama-3.3-70b-versatile": 45,
+    "llama-3.3-8b-instant": 44
+  },
+  "reset_times": {
+    "llama-3.3-70b-versatile_reset": "2025-12-13T00:00:00",
+    "llama-3.3-8b-instant_reset": "2025-12-13T00:00:00"
+  }
+}

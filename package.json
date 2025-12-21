@@ -1,0 +1,29 @@
+{
+  "name": "keliva",
+  "version": "1.0.0",
+  "description": "Knowledge-Enhanced Linguistic Intelligence & Voice Assistant",
+  "scripts": {
+    "deploy": "powershell -ExecutionPolicy Bypass -File deploy.ps1",
+    "deploy:backend": "wrangler pages deploy functions --project-name=keliva",
+    "deploy:frontend": "cd frontend && npm run build && wrangler pages deploy dist --project-name=keliva-app",
+    "db:create": "wrangler d1 create keliva-db",
+    "db:migrate": "wrangler d1 execute keliva-db --file=schema.sql",
+    "db:info": "wrangler d1 info keliva-db",
+    "secrets:set": "echo 'Run: wrangler secret put GROQ_API_KEY && wrangler secret put TELEGRAM_BOT_TOKEN'",
+    "logs": "wrangler pages deployment tail --project-name=keliva",
+    "health": "curl https://keliva.pages.dev/api/health"
+  },
+  "keywords": [
+    "ai",
+    "chatbot",
+    "language-learning",
+    "telegram-bot",
+    "cloudflare",
+    "fastapi"
+  ],
+  "author": "KeLiva Team",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}

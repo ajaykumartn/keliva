@@ -1,0 +1,485 @@
+/* Welcome Screen Styles */
+
+.welcome-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 50%, #16213e 100%);
+  position: relative;
+  overflow: hidden;
+  animation: fadeIn 0.6s ease-out;
+}
+
+.welcome-container.exit {
+  animation: fadeOut 0.6s ease-out forwards;
+}
+
+.welcome-container.rejected {
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-10px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(10px);
+  }
+}
+
+/* Animated Background */
+.welcome-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+.floating-shape {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.3;
+  animation: float 20s infinite ease-in-out;
+}
+
+.shape-1 {
+  width: 400px;
+  height: 400px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  top: -100px;
+  left: -100px;
+  animation-delay: 0s;
+}
+
+.shape-2 {
+  width: 350px;
+  height: 350px;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  bottom: -100px;
+  right: -100px;
+  animation-delay: 5s;
+}
+
+.shape-3 {
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation-delay: 10s;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(50px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-30px, 30px) scale(0.9);
+  }
+}
+
+/* Welcome Content */
+.welcome-content {
+  position: relative;
+  z-index: 10;
+  max-width: 500px;
+  width: 90%;
+  padding: 3rem;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  text-align: center;
+  animation: slideUp 0.8s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.welcome-logo {
+  margin-bottom: 2rem;
+  animation: logoAppear 1s ease-out 0.2s both;
+}
+
+@keyframes logoAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.8) rotate(-10deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.logo-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.welcome-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0 0 1rem 0;
+  color: #ffffff;
+  animation: slideUp 0.8s ease-out 0.3s both;
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.welcome-subtitle {
+  font-size: 1.1rem;
+  color: #a0a0a0;
+  margin: 0 0 2.5rem 0;
+  animation: slideUp 0.8s ease-out 0.4s both;
+}
+
+/* Name Form */
+.name-form {
+  margin-bottom: 2rem;
+  animation: slideUp 0.8s ease-out 0.5s both;
+}
+
+.input-group {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.input-icon {
+  position: absolute;
+  left: 1.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.5rem;
+  color: #667eea;
+  pointer-events: none;
+}
+
+.name-input {
+  width: 100%;
+  padding: 1.25rem 1.25rem 1.25rem 3.5rem;
+  font-size: 1.1rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #ffffff;
+  outline: none;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.name-input::placeholder {
+  color: #666;
+}
+
+.name-input:focus {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.2);
+}
+
+.start-button {
+  width: 100%;
+  padding: 1.25rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.start-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.start-button:hover::before {
+  left: 100%;
+}
+
+.start-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(102, 126, 234, 0.5);
+}
+
+.start-button:active {
+  transform: translateY(0);
+}
+
+.start-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.start-button:disabled:hover {
+  box-shadow: none;
+}
+
+.button-icon {
+  font-size: 1.25rem;
+  animation: sparkle 1.5s ease-in-out infinite;
+}
+
+@keyframes sparkle {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.2) rotate(180deg);
+  }
+}
+
+.arrow-icon {
+  transition: transform 0.3s ease;
+}
+
+.start-button:hover .arrow-icon {
+  transform: translateX(5px);
+}
+
+/* Feature Badges */
+.welcome-features {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  animation: slideUp 0.8s ease-out 0.6s both;
+}
+
+.feature-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  font-size: 0.85rem;
+  color: #a0a0a0;
+  transition: all 0.3s ease;
+}
+
+.feature-badge:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.badge-icon {
+  font-size: 1rem;
+}
+
+/* Welcome Note */
+.welcome-note {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 0;
+  animation: slideUp 0.8s ease-out 0.7s both;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .welcome-content {
+    padding: 2rem 1.5rem;
+  }
+
+  .welcome-title {
+    font-size: 2rem;
+  }
+
+  .welcome-subtitle {
+    font-size: 1rem;
+  }
+
+  .logo-image {
+    width: 64px;
+    height: 64px;
+  }
+
+  .name-input {
+    font-size: 1rem;
+    padding: 1rem 1rem 1rem 3rem;
+  }
+
+  .start-button {
+    font-size: 1rem;
+    padding: 1rem 1.5rem;
+  }
+
+  .welcome-features {
+    gap: 0.5rem;
+  }
+
+  .feature-badge {
+    font-size: 0.75rem;
+    padding: 0.4rem 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .welcome-content {
+    padding: 1.5rem 1rem;
+  }
+
+  .welcome-title {
+    font-size: 1.75rem;
+  }
+
+  .feature-badge {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+
+
+/* Rejection Screen */
+.rejection-content {
+  position: relative;
+  z-index: 10;
+  max-width: 500px;
+  width: 90%;
+  padding: 3rem;
+  background: rgba(255, 50, 50, 0.1);
+  backdrop-filter: blur(20px);
+  border: 2px solid rgba(255, 50, 50, 0.3);
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(255, 0, 0, 0.3);
+  text-align: center;
+  animation: rejectionAppear 0.5s ease-out;
+}
+
+@keyframes rejectionAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.rejection-icon {
+  font-size: 5rem;
+  color: #ff4444;
+  margin-bottom: 1.5rem;
+  animation: iconShake 0.5s ease-in-out;
+}
+
+@keyframes iconShake {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-15deg);
+  }
+  75% {
+    transform: rotate(15deg);
+  }
+}
+
+.rejection-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #ff4444;
+  margin: 0 0 1rem 0;
+  animation: slideUp 0.6s ease-out 0.2s both;
+}
+
+.rejection-message {
+  font-size: 1.2rem;
+  color: #ffaaaa;
+  margin: 0 0 1.5rem 0;
+  line-height: 1.6;
+  animation: slideUp 0.6s ease-out 0.3s both;
+}
+
+.rejection-note {
+  font-size: 0.9rem;
+  color: #ff8888;
+  margin: 0;
+  animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

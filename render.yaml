@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: keliva-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DEBUG_MODE
+        value: false
+      - key: ALLOWED_ORIGINS
+        value: https://keliva-frontend.vercel.app,http://localhost:3000
+      - key: ALLOWED_HOSTS
+        value: localhost,127.0.0.1,.onrender.com,.vercel.app
+      - key: DATABASE_URL
+        fromDatabase:
+          name: keliva-db
+          property: connectionString
+    autoDeploy: true
+    
+  - type: pserv
+    name: keliva-db
+    env: postgresql
+    plan: free
+    databaseName: keliva
+    user: keliva_user
