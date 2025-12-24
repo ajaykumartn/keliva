@@ -88,10 +88,10 @@ export const secureApiCall = async (
   const url = `${SECURITY_CONFIG.API_BASE_URL}${endpoint}`;
   
   // Default headers
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'X-Requested-With': 'XMLHttpRequest',
-    ...options.headers
+    ...(options.headers as Record<string, string> || {})
   };
 
   // Add authentication if required
@@ -159,7 +159,7 @@ const sanitizeObject = (obj: any): any => {
  */
 export class SessionManager {
   private static instance: SessionManager;
-  private sessionTimer: NodeJS.Timeout | null = null;
+  private sessionTimer: number | null = null;
 
   static getInstance(): SessionManager {
     if (!SessionManager.instance) {
@@ -177,7 +177,7 @@ export class SessionManager {
       clearTimeout(this.sessionTimer);
     }
 
-    this.sessionTimer = setTimeout(() => {
+    this.sessionTimer = window.setTimeout(() => {
       this.expireSession();
     }, SECURITY_CONFIG.SESSION_TIMEOUT);
   }

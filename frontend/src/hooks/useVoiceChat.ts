@@ -85,26 +85,6 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}): UseVoiceChatRet
   }, [onError]);
 
   /**
-   * Initialize audio context for playback
-   */
-  const initAudioContext = useCallback(() => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    return audioContextRef.current;
-  }, []);
-
-  /**
-   * Speak text using Web Speech API (simplified)
-   */
-  const speakText = useCallback(async (text: string, languageCode?: string) => {
-    // Use the updated webSpeechService for TTS with gender preference
-    await webSpeechService.speakAIResponse(text, languageCode || 'en', voiceGender);
-  }, [voiceGender]);
-
-
-
-  /**
    * Play next audio chunk from queue
    */
   const playNextAudioChunk = useCallback(() => {
