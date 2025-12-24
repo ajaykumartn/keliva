@@ -1,6 +1,6 @@
 """
 KeLiva - Central Brain (FastAPI Backend)
-Main application entry point with 24/7 keep-alive system
+Main application entry point with 24/7 keep-alive system and AI integration
 """
 # Load environment variables FIRST before any other imports
 from dotenv import load_dotenv
@@ -16,21 +16,6 @@ import time
 import logging
 from datetime import datetime
 import asyncio
-
-# Import existing routers
-try:
-    from routers.telegram import router as telegram_router
-    TELEGRAM_AVAILABLE = True
-except ImportError as e:
-    logging.warning(f"Telegram router not available: {e}")
-    TELEGRAM_AVAILABLE = False
-
-try:
-    from routers.whatsapp import router as whatsapp_router
-    WHATSAPP_AVAILABLE = True
-except ImportError as e:
-    logging.warning(f"WhatsApp router not available: {e}")
-    WHATSAPP_AVAILABLE = False
 
 # Logging Configuration
 logging.basicConfig(
@@ -197,14 +182,42 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include existing routers if available
-if TELEGRAM_AVAILABLE:
-    app.include_router(telegram_router)
-    logger.info("Telegram router included")
-
-if WHATSAPP_AVAILABLE:
-    app.include_router(whatsapp_router)
-    logger.info("WhatsApp router included")
+# AI Helper Function
+async def get_ai_response(message: str, mode: str = "chat") -> str:
+    """Get AI response using Groq API"""
+    try:
+        import groq
+        
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            return "Sorry, AI service is not configured."
+        
+        client = groq.Groq(api_key=api_key)
+        
+        # System prompts based on mode
+        system_prompts = {
+            "chat": "You are KeLiva, a helpful and friendly AI assistant. Be conversational and helpful.",
+            "grammar": "You are KeLiva, a grammar expert. Check the text for grammar errors and provide corrections with explanations. Be clear and educational.",
+            "voice": "You are KeLiva, a pronunciation and speaking coach. Help users improve their speaking skills."
+        }
+        
+        system_prompt = system_prompts.get(mode, system_prompts["chat"])
+        
+        completion = client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": message}
+            ],
+            model="llama3-8b-8192",
+            max_tokens=1000,
+            temperature=0.7
+        )
+        
+        return completion.choices[0].message.content
+        
+    except Exception as e:
+        logger.error(f"AI response error: {str(e)}")
+        return "Sorry, I'm having trouble processing your message right now. Please try again!"
 
 @app.get("/api/health")
 @limiter.limit("60/minute")
@@ -220,7 +233,7 @@ async def health_check(request: Request):
 @limiter.limit("30/minute")
 async def root(request: Request):
     """Root endpoint"""
-    return {"message": "KeLiva API is running with 24/7 uptime"}
+    return {"message": "KeLiva API is running with 24/7 uptime and AI integration"}
 
 @app.get("/api/test")
 @limiter.limit("30/minute")
@@ -228,30 +241,112 @@ async def test_endpoint(request: Request):
     """Simple test endpoint for frontend connectivity"""
     return {
         "status": "success",
-        "message": "KeLiva backend is working!",
+        "message": "KeLiva backend is working with AI!",
         "timestamp": datetime.now().isoformat(),
-        "keep_alive": KEEP_ALIVE_ENABLED
+        "keep_alive": KEEP_ALIVE_ENABLED,
+        "ai_available": bool(os.getenv("GROQ_API_KEY"))
     }
 
-# Simple chat endpoint
+# Chat endpoint with AI
 @app.post("/api/chat")
 @limiter.limit("20/minute")
 async def chat_endpoint(request: Request):
-    """Simple chat endpoint"""
+    """Chat endpoint with AI integration"""
     try:
         data = await request.json()
         message = data.get("message", "")
+        mode = data.get("mode", "chat")
         
-        # Simple response for now
-        response = f"Echo: {message}"
+        if not message:
+            raise HTTPException(status_code=400, detail="Message is required")
+        
+        # Get AI response
+        ai_response = await get_ai_response(message, mode)
         
         return {
-            "response": response,
+            "response": ai_response,
+            "mode": mode,
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
         logger.error(f"Chat error: {str(e)}")
         raise HTTPException(status_code=500, detail="Chat processing failed")
+
+# Telegram webhook with AI
+@app.post("/api/telegram/webhook")
+@limiter.limit("100/minute")
+async def telegram_webhook(request: Request):
+    """Telegram webhook with AI integration"""
+    try:
+        data = await request.json()
+        logger.info("Telegram webhook received")
+        
+        # Extract message
+        if "message" in data:
+            message = data["message"]
+            chat_id = message.get("chat", {}).get("id")
+            text = message.get("text", "")
+            user_name = message.get("from", {}).get("first_name", "User")
+            
+            if chat_id and text:
+                # Handle commands
+                if text.startswith("/"):
+                    if text == "/start":
+                        response_text = f"👋 Hello {user_name}! I'm KeLiva, your AI assistant.\n\n" \
+                                      "I can help you with:\n" \
+                                      "💬 General conversations\n" \
+                                      "✏️ Grammar checking\n" \
+                                      "🎤 Speaking practice\n\n" \
+                                      "Just send me a message!"
+                    elif text == "/help":
+                        response_text = "🤖 KeLiva AI Commands:\n\n" \
+                                      "/start - Welcome message\n" \
+                                      "/help - Show this help\n" \
+                                      "/grammar - Switch to grammar mode\n" \
+                                      "/chat - Switch to chat mode\n\n" \
+                                      "Or just send any message for AI response!"
+                    elif text == "/grammar":
+                        response_text = "✏️ Grammar mode activated! Send me any text and I'll check it for grammar errors."
+                    elif text == "/chat":
+                        response_text = "💬 Chat mode activated! Let's have a conversation."
+                    else:
+                        response_text = "Unknown command. Type /help for available commands."
+                else:
+                    # Get AI response for regular messages
+                    mode = "grammar" if "grammar" in text.lower() or "correct" in text.lower() else "chat"
+                    response_text = await get_ai_response(text, mode)
+                
+                # Send response back to Telegram
+                bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+                if bot_token:
+                    import httpx
+                    async with httpx.AsyncClient() as client:
+                        await client.post(
+                            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                            json={
+                                "chat_id": chat_id,
+                                "text": response_text
+                            },
+                            timeout=10.0
+                        )
+                    
+                    logger.info(f"AI response sent to Telegram chat {chat_id}")
+        
+        return {"ok": True}
+        
+    except Exception as e:
+        logger.error(f"Telegram webhook error: {str(e)}")
+        return {"ok": True}  # Always return ok to Telegram
+
+# Telegram webhook verification
+@app.get("/api/telegram/webhook")
+async def telegram_webhook_verify(request: Request):
+    """Telegram webhook verification"""
+    return {
+        "status": "Telegram webhook active with AI integration", 
+        "timestamp": datetime.now().isoformat(),
+        "ai_available": bool(os.getenv("GROQ_API_KEY"))
+    }
 
 if __name__ == "__main__":
     import uvicorn

@@ -13,5 +13,11 @@ httpx>=0.24.0
 PyJWT==2.4.0
 slowapi==0.1.9
 
-# Additional dependencies for existing routers
-pydantic==1.10.0
+# Pydantic v1 compatible with older FastAPI
+pydantic>=1.8.0,<2.0.0
+
+# Database (simple SQLite)
+sqlalchemy>=1.4.0,<2.0.0
+
+# Additional utilities
+typing-extensions>=4.0.0
