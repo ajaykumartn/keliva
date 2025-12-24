@@ -30,7 +30,7 @@ websockets==12.0
 # Security Dependencies
 PyJWT==2.8.0
 bcrypt==4.1.2
-cryptography==41.0.8
+cryptography>=41.0.0
 slowapi==0.1.9
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
