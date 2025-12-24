@@ -12,3 +12,6 @@ httpx>=0.24.0
 # Security Dependencies
 PyJWT==2.4.0
 slowapi==0.1.9
+
+# Additional dependencies for existing routers
+pydantic==1.10.0

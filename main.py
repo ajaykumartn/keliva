@@ -17,6 +17,21 @@ import logging
 from datetime import datetime
 import asyncio
 
+# Import existing routers
+try:
+    from routers.telegram import router as telegram_router
+    TELEGRAM_AVAILABLE = True
+except ImportError as e:
+    logging.warning(f"Telegram router not available: {e}")
+    TELEGRAM_AVAILABLE = False
+
+try:
+    from routers.whatsapp import router as whatsapp_router
+    WHATSAPP_AVAILABLE = True
+except ImportError as e:
+    logging.warning(f"WhatsApp router not available: {e}")
+    WHATSAPP_AVAILABLE = False
+
 # Logging Configuration
 logging.basicConfig(
     level=logging.INFO,
@@ -182,6 +197,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include existing routers if available
+if TELEGRAM_AVAILABLE:
+    app.include_router(telegram_router)
+    logger.info("Telegram router included")
+
+if WHATSAPP_AVAILABLE:
+    app.include_router(whatsapp_router)
+    logger.info("WhatsApp router included")
+
 @app.get("/api/health")
 @limiter.limit("60/minute")
 async def health_check(request: Request):
@@ -228,104 +252,6 @@ async def chat_endpoint(request: Request):
     except Exception as e:
         logger.error(f"Chat error: {str(e)}")
         raise HTTPException(status_code=500, detail="Chat processing failed")
-
-# Telegram webhook endpoint
-@app.post("/api/telegram/webhook")
-@limiter.limit("100/minute")
-async def telegram_webhook(request: Request):
-    """Telegram bot webhook endpoint"""
-    try:
-        data = await request.json()
-        logger.info(f"Telegram webhook received: {data}")
-        
-        # Extract message info
-        if "message" in data:
-            message = data["message"]
-            chat_id = message.get("chat", {}).get("id")
-            text = message.get("text", "")
-            
-            if chat_id and text:
-                # Simple echo response for now
-                response_text = f"KeLiva received: {text}"
-                
-                # You can add Groq AI processing here later
-                logger.info(f"Telegram message from {chat_id}: {text}")
-                
-                return {
-                    "method": "sendMessage",
-                    "chat_id": chat_id,
-                    "text": response_text
-                }
-        
-        return {"status": "ok"}
-        
-    except Exception as e:
-        logger.error(f"Telegram webhook error: {str(e)}")
-        return {"status": "error", "message": str(e)}
-
-# WhatsApp webhook endpoint
-@app.post("/api/whatsapp/webhook")
-@limiter.limit("100/minute")
-async def whatsapp_webhook(request: Request):
-    """WhatsApp webhook endpoint"""
-    try:
-        data = await request.json()
-        logger.info(f"WhatsApp webhook received: {data}")
-        
-        # Process WhatsApp message
-        if "messages" in data.get("entry", [{}])[0].get("changes", [{}])[0].get("value", {}):
-            messages = data["entry"][0]["changes"][0]["value"]["messages"]
-            
-            for message in messages:
-                phone_number = message.get("from")
-                text = message.get("text", {}).get("body", "")
-                
-                if phone_number and text:
-                    logger.info(f"WhatsApp message from {phone_number}: {text}")
-                    
-                    # Simple response - you can add Groq AI processing here
-                    response_text = f"KeLiva received: {text}"
-                    
-                    return {
-                        "messaging_product": "whatsapp",
-                        "to": phone_number,
-                        "text": {"body": response_text}
-                    }
-        
-        return {"status": "ok"}
-        
-    except Exception as e:
-        logger.error(f"WhatsApp webhook error: {str(e)}")
-        return {"status": "error", "message": str(e)}
-
-# WhatsApp webhook verification (GET request)
-@app.get("/api/whatsapp/webhook")
-async def whatsapp_webhook_verify(request: Request):
-    """WhatsApp webhook verification"""
-    try:
-        mode = request.query_params.get("hub.mode")
-        token = request.query_params.get("hub.verify_token")
-        challenge = request.query_params.get("hub.challenge")
-        
-        # Verify token (you should set this in environment variables)
-        verify_token = os.getenv("WHATSAPP_VERIFY_TOKEN", "your_verify_token")
-        
-        if mode == "subscribe" and token == verify_token:
-            logger.info("WhatsApp webhook verified successfully")
-            return int(challenge)
-        else:
-            logger.warning("WhatsApp webhook verification failed")
-            raise HTTPException(status_code=403, detail="Verification failed")
-            
-    except Exception as e:
-        logger.error(f"WhatsApp verification error: {str(e)}")
-        raise HTTPException(status_code=400, detail="Verification error")
-
-# Telegram webhook verification (GET request)
-@app.get("/api/telegram/webhook")
-async def telegram_webhook_verify(request: Request):
-    """Telegram webhook verification"""
-    return {"status": "Telegram webhook endpoint active", "timestamp": datetime.now().isoformat()}
 
 if __name__ == "__main__":
     import uvicorn
