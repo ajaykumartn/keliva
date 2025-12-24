@@ -50,13 +50,13 @@ class KeepAliveManager:
             return
             
         try:
-            import aiohttp
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f"{self.base_url}/api/health") as response:
-                    if response.status == 200:
-                        logger.info("Keep-alive ping successful")
-                    else:
-                        logger.warning(f"Keep-alive ping failed with status: {response.status}")
+            import httpx
+            async with httpx.AsyncClient() as client:
+                response = await client.get(f"{self.base_url}/api/health")
+                if response.status_code == 200:
+                    logger.info("Keep-alive ping successful")
+                else:
+                    logger.warning(f"Keep-alive ping failed with status: {response.status_code}")
         except Exception as e:
             logger.error(f"Keep-alive ping error: {str(e)}")
     

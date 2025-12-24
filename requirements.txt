@@ -6,14 +6,8 @@ python-multipart==0.0.5
 # FREE LLM
 groq==0.4.1
 
-# Telegram Bot API
-python-telegram-bot==20.7
+# Basic dependencies
 httpx>=0.24.0
-
-# Other dependencies
-aiofiles==0.8.0
-aiohttp==3.8.0
-websockets==10.0
 
 # Security Dependencies
 PyJWT==2.4.0
