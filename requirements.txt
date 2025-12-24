@@ -1,16 +1,11 @@
-fastapi==0.109.0
-uvicorn[standard]==0.27.0
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
 python-dotenv==1.0.0
-pydantic==2.5.3
+pydantic==2.4.2
 python-multipart==0.0.6
 
-# Database (PostgreSQL for production)
-sqlalchemy==2.0.25
-psycopg2-binary==2.9.9
-alembic==1.13.1
-
-# Vector Database
-chromadb==0.4.22
+# Database (SQLite for simplicity)
+sqlalchemy==2.0.23
 
 # FREE Speech Services
 edge-tts==6.1.9
@@ -22,7 +17,7 @@ groq==0.4.1
 python-telegram-bot==20.7
 httpx>=0.25.2
 
-# Other free dependencies
+# Other dependencies
 aiofiles==23.2.1
 aiohttp==3.9.1
 websockets==12.0
@@ -30,12 +25,8 @@ websockets==12.0
 # Security Dependencies
 PyJWT==2.8.0
 bcrypt==4.1.2
-cryptography>=41.0.0
 slowapi==0.1.9
-python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 
 # Additional Security
-secure==0.3.0
 python-multipart==0.0.6
-email-validator==2.1.0
