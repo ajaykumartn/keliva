@@ -1,6 +1,6 @@
 """
 KeLiva - Central Brain (FastAPI Backend)
-Main application entry point with enterprise-grade security
+Main application entry point with 24/7 keep-alive system
 """
 # Load environment variables FIRST before any other imports
 from dotenv import load_dotenv
@@ -8,8 +8,6 @@ load_dotenv()
 
 from fastapi import FastAPI, Request, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -19,30 +17,19 @@ import logging
 from datetime import datetime
 import asyncio
 
-from utils.db_manager import DatabaseManager
-from routers.grammar import router as grammar_router
-from routers.chat import router as chat_router
-from routers.telegram import router as telegram_router
-from routers.voice import router as voice_router
-from routers.whatsapp import router as whatsapp_router
-from simple_auth import router as auth_router
-
-# Security Configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "your-super-secret-key-change-in-production")
-JWT_SECRET = os.getenv("JWT_SECRET", "your-jwt-secret-key-change-in-production")
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000").split(",")
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,.onrender.com,.vercel.app").split(",")
-
-# Keep-Alive Configuration
-KEEP_ALIVE_ENABLED = os.getenv("KEEP_ALIVE_ENABLED", "true").lower() == "true"
-KEEP_ALIVE_INTERVAL = int(os.getenv("KEEP_ALIVE_INTERVAL", "840"))  # 14 minutes (Render sleeps after 15 min)
-
 # Logging Configuration
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Keep-Alive Configuration
+KEEP_ALIVE_ENABLED = os.getenv("KEEP_ALIVE_ENABLED", "true").lower() == "true"
+KEEP_ALIVE_INTERVAL = int(os.getenv("KEEP_ALIVE_INTERVAL", "840"))  # 14 minutes
+
+# CORS Configuration
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",")
 
 # Keep-Alive System for 24/7 Uptime
 class KeepAliveManager:
@@ -148,20 +135,6 @@ async def detect_external_url(request: Request, call_next):
     response = await call_next(request)
     return response
 
-# Security: JWT Authentication (simplified)
-security = HTTPBearer()
-
-def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Simplified token verification"""
-    try:
-        # Simple token validation - in production, use proper JWT validation
-        if credentials.credentials:
-            return {"user": "authenticated"}
-        else:
-            raise HTTPException(status_code=401, detail="Invalid token")
-    except Exception:
-        raise HTTPException(status_code=401, detail="Token verification failed")
-
 # Security: Headers Middleware
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
@@ -172,9 +145,6 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
     
     return response
 
@@ -184,7 +154,7 @@ async def log_requests(request: Request, call_next):
     """Log all requests for security monitoring"""
     start_time = time.time()
     
-    # Get client IP (handle proxy headers)
+    # Get client IP
     client_ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "unknown")
     if "," in client_ip:
         client_ip = client_ip.split(",")[0].strip()
@@ -198,29 +168,12 @@ async def log_requests(request: Request, call_next):
         f"Method: {request.method} | "
         f"URL: {str(request.url)} | "
         f"Status: {response.status_code} | "
-        f"Time: {process_time:.2f}s | "
-        f"User-Agent: {request.headers.get('User-Agent', 'Unknown')}"
+        f"Time: {process_time:.2f}s"
     )
-    
-    # Log suspicious activity
-    if response.status_code >= 400:
-        logger.warning(
-            f"Suspicious activity - IP: {client_ip} | "
-            f"Status: {response.status_code} | "
-            f"URL: {str(request.url)}"
-        )
     
     return response
 
-# Initialize database manager
-# For local development, uses SQLite
-# For Cloudflare deployment, will use D1 bindings from request.state.env.DB
-db_manager = DatabaseManager(db_path=os.getenv("DB_PATH", "keliva.db"))
-
-# Set up rate limit error handlers
-# setup_rate_limit_handlers(app)
-
-# Security: CORS configuration with strict origins
+# Security: CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -229,81 +182,52 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Security: Trusted Host Middleware
-app.add_middleware(
-    TrustedHostMiddleware, 
-    allowed_hosts=ALLOWED_HOSTS
-)
-
-# Include routers
-app.include_router(grammar_router)
-app.include_router(chat_router)
-app.include_router(voice_router)
-app.include_router(telegram_router)
-app.include_router(whatsapp_router)
-app.include_router(auth_router)
-
 @app.get("/api/health")
-@limiter.limit("60/minute")  # Rate limit: 60 requests per minute
+@limiter.limit("60/minute")
 async def health_check(request: Request):
     """Health check endpoint for keep-alive monitoring"""
     return {
         "status": "alive",
         "timestamp": datetime.now().isoformat(),
-        "database": "connected"
+        "message": "KeLiva API is running with 24/7 keep-alive"
     }
 
-@app.get("/api/db/test")
-@limiter.limit("10/minute")  # Rate limit: 10 requests per minute
-async def test_database(request: Request):
-    """Test database connection and operations"""
-    try:
-        import sqlite3
-        conn = sqlite3.connect(os.getenv("DB_PATH", "keliva.db"))
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM users")
-        count = cursor.fetchone()[0]
-        conn.close()
-        return {
-            "status": "ok",
-            "users_count": count,
-            "message": "Database is working correctly"
-        }
-    except Exception as e:
-        logger.error(f"Database test failed: {str(e)}")
-        return {
-            "status": "error",
-            "message": "Database connection failed"
-        }
-
 @app.get("/")
-@limiter.limit("30/minute")  # Rate limit: 30 requests per minute
+@limiter.limit("30/minute")
 async def root(request: Request):
     """Root endpoint"""
-    return {"message": "KeLiva API is running securely"}
+    return {"message": "KeLiva API is running with 24/7 uptime"}
 
 @app.get("/api/test")
-@limiter.limit("30/minute")  # Rate limit: 30 requests per minute
+@limiter.limit("30/minute")
 async def test_endpoint(request: Request):
     """Simple test endpoint for frontend connectivity"""
     return {
         "status": "success",
-        "message": "Python backend is working securely!",
-        "cors": "enabled",
-        "security": "active",
-        "timestamp": datetime.now().isoformat()
+        "message": "KeLiva backend is working!",
+        "timestamp": datetime.now().isoformat(),
+        "keep_alive": KEEP_ALIVE_ENABLED
     }
 
-# Security: Protected endpoint example
-@app.get("/api/protected")
+# Simple chat endpoint
+@app.post("/api/chat")
 @limiter.limit("20/minute")
-async def protected_endpoint(request: Request, user: dict = Depends(verify_token)):
-    """Example of a protected endpoint requiring JWT authentication"""
-    return {
-        "message": "This is a protected endpoint",
-        "user": user,
-        "timestamp": datetime.now().isoformat()
-    }
+async def chat_endpoint(request: Request):
+    """Simple chat endpoint"""
+    try:
+        data = await request.json()
+        message = data.get("message", "")
+        
+        # Simple response for now
+        response = f"Echo: {message}"
+        
+        return {
+            "response": response,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Chat error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Chat processing failed")
 
 if __name__ == "__main__":
     import uvicorn

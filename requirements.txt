@@ -1,32 +1,20 @@
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-python-dotenv==1.0.0
-pydantic==2.4.2
-python-multipart==0.0.6
-
-# Database (SQLite for simplicity)
-sqlalchemy==2.0.23
-
-# FREE Speech Services
-edge-tts==6.1.9
+fastapi==0.68.0
+uvicorn==0.15.0
+python-dotenv==0.19.0
+python-multipart==0.0.5
 
 # FREE LLM
 groq==0.4.1
 
 # Telegram Bot API
 python-telegram-bot==20.7
-httpx>=0.25.2
+httpx>=0.24.0
 
 # Other dependencies
-aiofiles==23.2.1
-aiohttp==3.9.1
-websockets==12.0
+aiofiles==0.8.0
+aiohttp==3.8.0
+websockets==10.0
 
 # Security Dependencies
-PyJWT==2.8.0
-bcrypt==4.1.2
+PyJWT==2.4.0
 slowapi==0.1.9
-passlib[bcrypt]==1.7.4
-
-# Additional Security
-python-multipart==0.0.6
