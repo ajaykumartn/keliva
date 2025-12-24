@@ -29,7 +29,7 @@ KEEP_ALIVE_ENABLED = os.getenv("KEEP_ALIVE_ENABLED", "true").lower() == "true"
 KEEP_ALIVE_INTERVAL = int(os.getenv("KEEP_ALIVE_INTERVAL", "840"))  # 14 minutes
 
 # CORS Configuration
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",")
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173,https://keliva.vercel.app").split(",")
 
 # Keep-Alive System for 24/7 Uptime
 class KeepAliveManager:
@@ -347,6 +347,59 @@ async def telegram_webhook_verify(request: Request):
         "timestamp": datetime.now().isoformat(),
         "ai_available": bool(os.getenv("GROQ_API_KEY"))
     }
+
+# Simple auth endpoints for frontend compatibility
+@app.post("/api/auth/login")
+@limiter.limit("10/minute")
+async def auth_login(request: Request):
+    """Simple login endpoint"""
+    try:
+        data = await request.json()
+        username = data.get("username", "")
+        password = data.get("password", "")
+        
+        # Simple validation (in production, use proper authentication)
+        if username and password:
+            return {
+                "success": True,
+                "token": "demo_token_" + str(int(datetime.now().timestamp())),
+                "user": {
+                    "username": username,
+                    "name": username.title()
+                }
+            }
+        else:
+            raise HTTPException(status_code=400, detail="Username and password required")
+    except Exception as e:
+        logger.error(f"Login error: {str(e)}")
+        raise HTTPException(status_code=400, detail="Login failed")
+
+@app.post("/api/auth/register")
+@limiter.limit("5/minute")
+async def auth_register(request: Request):
+    """Simple registration endpoint"""
+    try:
+        data = await request.json()
+        username = data.get("username", "")
+        password = data.get("password", "")
+        email = data.get("email", "")
+        
+        # Simple validation
+        if username and password and email:
+            return {
+                "success": True,
+                "message": "Registration successful",
+                "user": {
+                    "username": username,
+                    "email": email,
+                    "name": username.title()
+                }
+            }
+        else:
+            raise HTTPException(status_code=400, detail="All fields required")
+    except Exception as e:
+        logger.error(f"Registration error: {str(e)}")
+        raise HTTPException(status_code=400, detail="Registration failed")
 
 if __name__ == "__main__":
     import uvicorn
