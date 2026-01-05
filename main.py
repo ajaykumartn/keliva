@@ -1,6 +1,6 @@
 """
 KeLiva - Central Brain (FastAPI Backend)
-Main application entry point with 24/7 keep-alive system and AI integration
+Main application entry point with 24/7 keep-alive system, AI integration, and PostgreSQL database
 """
 # Load environment variables FIRST before any other imports
 from dotenv import load_dotenv
@@ -16,6 +16,11 @@ import time
 import logging
 from datetime import datetime
 import asyncio
+
+# Import PostgreSQL database services
+from models.postgres_database import (
+    db_manager, user_service, conversation_service, grammar_service, voice_service
+)
 
 # Logging Configuration
 logging.basicConfig(
@@ -93,11 +98,19 @@ limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Startup event to initialize keep-alive
+# Startup event to initialize keep-alive and database
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup"""
     logger.info("KeLiva API starting up...")
+    
+    # Initialize PostgreSQL database
+    try:
+        await db_manager.init_pool()
+        logger.info("PostgreSQL database initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}")
+        # Don't fail startup, but log the error
     
     # Detect deployment URL for keep-alive
     if KEEP_ALIVE_ENABLED:
@@ -115,6 +128,13 @@ async def shutdown_event():
     """Cleanup on shutdown"""
     logger.info("KeLiva API shutting down...")
     keep_alive_manager.stop_keep_alive()
+    
+    # Close database connections
+    try:
+        await db_manager.close_pool()
+        logger.info("Database connections closed")
+    except Exception as e:
+        logger.error(f"Error closing database: {e}")
 
 # Middleware to detect external URL on first request
 @app.middleware("http")
@@ -255,15 +275,16 @@ async def test_endpoint(request: Request):
         "ai_available": bool(os.getenv("GROQ_API_KEY"))
     }
 
-# Chat endpoint with AI
+# Chat endpoint with AI and PostgreSQL storage
 @app.post("/api/chat")
 @limiter.limit("20/minute")
 async def chat_endpoint(request: Request):
-    """Chat endpoint with AI integration"""
+    """Chat endpoint with AI integration and PostgreSQL storage"""
     try:
         data = await request.json()
         message = data.get("message", "")
         mode = data.get("mode", "chat")
+        user_id = data.get("user_id")  # Optional user ID for logged-in users
         
         if not message:
             raise HTTPException(status_code=400, detail="Message is required")
@@ -271,9 +292,55 @@ async def chat_endpoint(request: Request):
         # Get AI response
         ai_response = await get_ai_response(message, mode)
         
+        # Store conversation in database if user is logged in
+        conversation_id = None
+        if user_id:
+            try:
+                # Create or get conversation
+                conversation_id = await conversation_service.create_conversation(
+                    user_id=user_id, 
+                    title=f"Chat - {datetime.now().strftime('%Y-%m-%d %H:%M')}", 
+                    interface="web"
+                )
+                
+                # Store user message
+                await conversation_service.add_message(
+                    conversation_id=conversation_id,
+                    user_id=user_id,
+                    role="user",
+                    content=message,
+                    message_type=mode,
+                    interface_type="web"
+                )
+                
+                # Store AI response
+                await conversation_service.add_message(
+                    conversation_id=conversation_id,
+                    user_id=user_id,
+                    role="assistant",
+                    content=ai_response,
+                    message_type=mode,
+                    interface_type="web"
+                )
+                
+                # If grammar mode, save grammar correction
+                if mode == "grammar":
+                    await grammar_service.save_grammar_correction(
+                        message_id=conversation_id,  # Using conversation_id as reference
+                        original_text=message,
+                        corrected_text=ai_response,
+                        errors=[],  # Could be enhanced with actual error detection
+                        score=85  # Default score
+                    )
+                    
+            except Exception as db_error:
+                logger.error(f"Database error in chat: {db_error}")
+                # Continue without database storage
+        
         return {
             "response": ai_response,
             "mode": mode,
+            "conversation_id": conversation_id,
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
@@ -346,6 +413,126 @@ async def telegram_webhook(request: Request):
         logger.error(f"Telegram webhook error: {str(e)}")
         return {"ok": True}  # Always return ok to Telegram
 
+# User profile and conversation history endpoints
+@app.get("/api/user/profile/{user_id}")
+@limiter.limit("30/minute")
+async def get_user_profile(request: Request, user_id: str):
+    """Get user profile"""
+    try:
+        user = await user_service.get_user_by_id(user_id)
+        if user:
+            return {
+                "success": True,
+                "user": user
+            }
+        else:
+            raise HTTPException(status_code=404, detail="User not found")
+    except Exception as e:
+        logger.error(f"Profile error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get profile")
+
+@app.get("/api/user/conversations/{user_id}")
+@limiter.limit("30/minute")
+async def get_user_conversations(request: Request, user_id: str, limit: int = 20):
+    """Get user's conversation history"""
+    try:
+        # This would need to be implemented in conversation_service
+        # For now, return empty list
+        return {
+            "success": True,
+            "conversations": [],
+            "message": "Conversation history feature coming soon"
+        }
+    except Exception as e:
+        logger.error(f"Conversations error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get conversations")
+
+@app.get("/api/user/grammar-history/{user_id}")
+@limiter.limit("30/minute")
+async def get_grammar_history(request: Request, user_id: str, limit: int = 20):
+    """Get user's grammar correction history"""
+    try:
+        history = await grammar_service.get_user_grammar_history(user_id, limit)
+        return {
+            "success": True,
+            "grammar_history": history
+        }
+    except Exception as e:
+        logger.error(f"Grammar history error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get grammar history")
+
+# Voice practice endpoints
+@app.post("/api/voice/practice")
+@limiter.limit("20/minute")
+async def voice_practice(request: Request):
+    """Save voice practice session"""
+    try:
+        data = await request.json()
+        user_id = data.get("user_id")
+        text_to_read = data.get("text_to_read", "")
+        audio_url = data.get("audio_url")
+        pronunciation_score = data.get("pronunciation_score", 0)
+        feedback = data.get("feedback", {})
+        duration_seconds = data.get("duration_seconds", 0)
+        
+        if not user_id or not text_to_read:
+            raise HTTPException(status_code=400, detail="User ID and text are required")
+        
+        session_id = await voice_service.save_voice_session(
+            user_id=user_id,
+            text_to_read=text_to_read,
+            audio_url=audio_url,
+            pronunciation_score=pronunciation_score,
+            feedback=feedback,
+            duration_seconds=duration_seconds
+        )
+        
+        return {
+            "success": True,
+            "session_id": session_id,
+            "message": "Voice practice session saved"
+        }
+    except Exception as e:
+        logger.error(f"Voice practice error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to save voice practice")
+
+@app.get("/api/user/voice-history/{user_id}")
+@limiter.limit("30/minute")
+async def get_voice_history(request: Request, user_id: str, limit: int = 20):
+    """Get user's voice practice history"""
+    try:
+        history = await voice_service.get_user_voice_history(user_id, limit)
+        return {
+            "success": True,
+            "voice_history": history
+        }
+    except Exception as e:
+        logger.error(f"Voice history error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get voice history")
+
+# Database health check endpoint
+@app.get("/api/database/health")
+@limiter.limit("10/minute")
+async def database_health_check(request: Request):
+    """Check database connection health"""
+    try:
+        async with db_manager.get_connection() as conn:
+            result = await conn.fetchval("SELECT 1")
+            return {
+                "status": "healthy",
+                "database": "postgresql",
+                "connection": "active",
+                "timestamp": datetime.now().isoformat()
+            }
+    except Exception as e:
+        logger.error(f"Database health check failed: {e}")
+        return {
+            "status": "unhealthy",
+            "database": "postgresql",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+
 # Telegram webhook verification
 @app.get("/api/telegram/webhook")
 async def telegram_webhook_verify(request: Request):
@@ -356,24 +543,34 @@ async def telegram_webhook_verify(request: Request):
         "ai_available": bool(os.getenv("GROQ_API_KEY"))
     }
 
-# Simple auth endpoints for frontend compatibility
+# Simple auth endpoints for frontend compatibility with PostgreSQL
 @app.post("/api/auth/login")
 @limiter.limit("10/minute")
 async def auth_login(request: Request):
-    """Simple login endpoint"""
+    """Simple login endpoint with PostgreSQL"""
     try:
         data = await request.json()
         username = data.get("username", "")
         password = data.get("password", "")
         
-        # Simple validation (in production, use proper authentication)
-        if username and password:
+        if not username or not password:
+            raise HTTPException(status_code=400, detail="Username and password required")
+        
+        # Try to authenticate user
+        user = await user_service.authenticate_user(username, password)
+        if not user:
+            # Try email authentication
+            user = await user_service.authenticate_user_by_email(username, password)
+        
+        if user:
             response_data = {
                 "success": True,
-                "token": "demo_token_" + str(int(datetime.now().timestamp())),
+                "token": f"demo_token_{int(datetime.now().timestamp())}",
                 "user": {
-                    "username": username,
-                    "name": username.title()
+                    "id": user["id"],
+                    "username": user["username"],
+                    "name": user["full_name"],
+                    "email": user["email"]
                 }
             }
             
@@ -385,7 +582,8 @@ async def auth_login(request: Request):
             response.headers["Access-Control-Allow-Headers"] = "*"
             return response
         else:
-            raise HTTPException(status_code=400, detail="Username and password required")
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+            
     except Exception as e:
         logger.error(f"Login error: {str(e)}")
         raise HTTPException(status_code=400, detail="Login failed")
@@ -393,22 +591,29 @@ async def auth_login(request: Request):
 @app.post("/api/auth/register")
 @limiter.limit("5/minute")
 async def auth_register(request: Request):
-    """Simple registration endpoint"""
+    """Simple registration endpoint with PostgreSQL"""
     try:
         data = await request.json()
         username = data.get("username", "")
         password = data.get("password", "")
         email = data.get("email", "")
+        full_name = data.get("full_name", username.title())
         
-        # Simple validation
-        if username and password and email:
+        if not username or not password or not email:
+            raise HTTPException(status_code=400, detail="Username, password, and email required")
+        
+        # Create user
+        user = await user_service.create_user(username, email, full_name, password)
+        
+        if user:
             response_data = {
                 "success": True,
                 "message": "Registration successful",
                 "user": {
-                    "username": username,
-                    "email": email,
-                    "name": username.title()
+                    "id": user["id"],
+                    "username": user["username"],
+                    "email": user["email"],
+                    "name": user["full_name"]
                 }
             }
             
@@ -420,7 +625,8 @@ async def auth_register(request: Request):
             response.headers["Access-Control-Allow-Headers"] = "*"
             return response
         else:
-            raise HTTPException(status_code=400, detail="All fields required")
+            raise HTTPException(status_code=400, detail="Username or email already exists")
+            
     except Exception as e:
         logger.error(f"Registration error: {str(e)}")
         raise HTTPException(status_code=400, detail="Registration failed")

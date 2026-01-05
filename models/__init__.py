@@ -1,22 +1,12 @@
 """
-Data models package
+Data models package - PostgreSQL version
 """
-from .database import (
-    User, UserCreate, UserBase,
-    Conversation, ConversationCreate, ConversationBase,
-    Message, MessageCreate, MessageBase,
-    GrammarCorrection, GrammarCorrectionCreate, GrammarCorrectionBase,
-    GrammarError,
-    UserFact, UserFactCreate, UserFactBase,
-    MessageRole, MessageType, InterfaceType, Language
+from .postgres_database import (
+    db_manager, user_service, conversation_service, grammar_service, voice_service,
+    PostgreSQLManager, UserService, ConversationService, GrammarService, VoiceService
 )
 
 __all__ = [
-    "User", "UserCreate", "UserBase",
-    "Conversation", "ConversationCreate", "ConversationBase",
-    "Message", "MessageCreate", "MessageBase",
-    "GrammarCorrection", "GrammarCorrectionCreate", "GrammarCorrectionBase",
-    "GrammarError",
-    "UserFact", "UserFactCreate", "UserFactBase",
-    "MessageRole", "MessageType", "InterfaceType", "Language"
+    "db_manager", "user_service", "conversation_service", "grammar_service", "voice_service",
+    "PostgreSQLManager", "UserService", "ConversationService", "GrammarService", "VoiceService"
 ]

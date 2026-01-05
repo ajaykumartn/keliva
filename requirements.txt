@@ -1,23 +1,32 @@
-fastapi==0.68.0
-uvicorn==0.15.0
-python-dotenv==0.19.0
-python-multipart==0.0.5
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-dotenv==1.0.0
+pydantic==2.5.3
+python-multipart==0.0.6
 
-# FREE LLM
+# Database - PostgreSQL
+asyncpg==0.29.0
+sqlalchemy==2.0.25
+psycopg2-binary==2.9.9
+alembic==1.13.1
+
+# AI and ML
 groq==0.4.1
 
-# Basic dependencies
-httpx>=0.24.0
+# Telegram Bot
+python-telegram-bot==20.7
+httpx>=0.25.2
 
-# Security Dependencies
-PyJWT==2.4.0
+# File handling
+aiofiles==23.2.1
+aiohttp==3.9.1
+websockets==12.0
+
+# Security
+PyJWT==2.8.0
+bcrypt==4.1.2
+cryptography>=42.0.0
 slowapi==0.1.9
-
-# Pydantic v1 compatible with older FastAPI
-pydantic>=1.8.0,<2.0.0
-
-# Database (simple SQLite)
-sqlalchemy>=1.4.0,<2.0.0
 
 # Additional utilities
 typing-extensions>=4.0.0
