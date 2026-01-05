@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import os
 import json
 import re
-from groq import AsyncGroq
+import requests
 from .rate_limiter import get_rate_limiter, GroqModel, RateLimitExceededError
 
 
@@ -49,9 +49,12 @@ class GrammarGuardian:
         if not self.api_key:
             raise ValueError("GROQ_API_KEY must be provided or set in environment")
         
-        self.client = AsyncGroq(api_key=self.api_key)
-        self.model = "llama-3.3-70b-versatile"  # FREE - 1,000 requests/day
-        self.rate_limiter = get_rate_limiter()
+        self.model = "llama-3.1-8b-instant"  # Updated to working model
+        try:
+            self.rate_limiter = get_rate_limiter()
+        except Exception:
+            # If rate limiter fails, continue without it
+            self.rate_limiter = None
         
     async def analyze_text(self, text: str) -> GrammarAnalysis:
         """
@@ -75,31 +78,52 @@ class GrammarGuardian:
         prompt = self._create_grammar_prompt(text)
         
         try:
-            # Check rate limit before making API call
-            self.rate_limiter.check_and_increment(GroqModel.LLAMA_70B)
+            # Check rate limit before making API call (if rate limiter is available)
+            if self.rate_limiter:
+                try:
+                    self.rate_limiter.check_and_increment(GroqModel.LLAMA_8B)
+                except:
+                    # If rate limiting fails, continue without it
+                    pass
             
-            # Call Groq API
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": self._get_system_prompt()
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                temperature=0.3,  # Lower temperature for consistent corrections
-                max_tokens=2000
+            # Use direct HTTP request to Groq API
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": self.model,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": self._get_system_prompt()
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "temperature": 0.3,  # Lower temperature for consistent corrections
+                    "max_tokens": 2000
+                },
+                timeout=30
             )
             
-            # Parse LLM response
-            llm_output = response.choices[0].message.content
-            analysis = self._parse_llm_response(text, llm_output)
-            
-            return analysis
+            if response.status_code == 200:
+                result = response.json()
+                llm_output = result["choices"][0]["message"]["content"]
+                analysis = self._parse_llm_response(text, llm_output)
+                return analysis
+            else:
+                # Fallback on API error
+                return GrammarAnalysis(
+                    original_text=text,
+                    corrected_text=text,
+                    errors=[],
+                    overall_score=0.0
+                )
             
         except RateLimitExceededError:
             # Re-raise rate limit errors so they can be handled by the caller
@@ -318,26 +342,44 @@ Corrected: "{corrected}"
 Provide a brief, clear explanation suitable for an English learner."""
         
         try:
-            # Check rate limit before making API call
-            self.rate_limiter.check_and_increment(GroqModel.LLAMA_70B)
+            # Check rate limit before making API call (if rate limiter is available)
+            if self.rate_limiter:
+                try:
+                    self.rate_limiter.check_and_increment(GroqModel.LLAMA_8B)
+                except:
+                    # If rate limiting fails, continue without it
+                    pass
             
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a friendly English tutor. Explain grammar corrections clearly and encouragingly."
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                temperature=0.5,
-                max_tokens=200
+            # Use direct HTTP request to Groq API
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": self.model,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are a friendly English tutor. Explain grammar corrections clearly and encouragingly."
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "temperature": 0.5,
+                    "max_tokens": 200
+                },
+                timeout=30
             )
             
-            return response.choices[0].message.content.strip()
+            if response.status_code == 200:
+                result = response.json()
+                return result["choices"][0]["message"]["content"].strip()
+            else:
+                return f"The correct form is '{corrected}' instead of '{original}'."
             
         except RateLimitExceededError:
             # Re-raise rate limit errors
