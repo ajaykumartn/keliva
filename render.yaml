@@ -12,7 +12,7 @@ services:
       - key: DEBUG_MODE
         value: false
       - key: ALLOWED_ORIGINS
-        value: https://keliva-frontend.vercel.app,http://localhost:3000
+        value: https://keliva.vercel.app,https://keliva-frontend.vercel.app,http://localhost:3000,http://localhost:5173
       - key: ALLOWED_HOSTS
         value: localhost,127.0.0.1,.onrender.com,.vercel.app
       - key: DATABASE_URL
