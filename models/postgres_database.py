@@ -1,7 +1,7 @@
 """
 PostgreSQL Database Configuration and Models for KeLiva
-Production-ready database setup with SQLAlchemy and psycopg2
-Compatible with SQLAlchemy 1.4 and Pydantic v1
+Production-ready database setup with SQLAlchemy 2.0 and Pydantic v2
+Compatible with Python 3.13
 """
 import os
 from datetime import datetime
@@ -12,14 +12,14 @@ import hashlib
 import secrets
 import logging
 from sqlalchemy import create_engine, Column, String, DateTime, Text, Boolean, Integer
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import DeclarativeBase, sessionmaker, Session
 from sqlalchemy.dialects.postgresql import UUID
 from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 class User(Base):
     __tablename__ = "users"
@@ -65,7 +65,7 @@ class VoicePractice(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class PostgreSQLManager:
-    """PostgreSQL database manager with SQLAlchemy"""
+    """PostgreSQL database manager with SQLAlchemy 2.0"""
     
     def __init__(self):
         self.engine = None
