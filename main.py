@@ -182,6 +182,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Manual CORS handler for preflight requests
+@app.options("/{full_path:path}")
+async def options_handler(request: Request, full_path: str):
+    """Handle CORS preflight requests"""
+    return {
+        "message": "OK"
+    }
+
 # AI Helper Function
 async def get_ai_response(message: str, mode: str = "chat") -> str:
     """Get AI response using Groq API"""
@@ -360,7 +368,7 @@ async def auth_login(request: Request):
         
         # Simple validation (in production, use proper authentication)
         if username and password:
-            return {
+            response_data = {
                 "success": True,
                 "token": "demo_token_" + str(int(datetime.now().timestamp())),
                 "user": {
@@ -368,6 +376,14 @@ async def auth_login(request: Request):
                     "name": username.title()
                 }
             }
+            
+            # Create response with explicit CORS headers
+            from fastapi.responses import JSONResponse
+            response = JSONResponse(content=response_data)
+            response.headers["Access-Control-Allow-Origin"] = "https://keliva.vercel.app"
+            response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+            return response
         else:
             raise HTTPException(status_code=400, detail="Username and password required")
     except Exception as e:
@@ -386,7 +402,7 @@ async def auth_register(request: Request):
         
         # Simple validation
         if username and password and email:
-            return {
+            response_data = {
                 "success": True,
                 "message": "Registration successful",
                 "user": {
@@ -395,6 +411,14 @@ async def auth_register(request: Request):
                     "name": username.title()
                 }
             }
+            
+            # Create response with explicit CORS headers
+            from fastapi.responses import JSONResponse
+            response = JSONResponse(content=response_data)
+            response.headers["Access-Control-Allow-Origin"] = "https://keliva.vercel.app"
+            response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+            return response
         else:
             raise HTTPException(status_code=400, detail="All fields required")
     except Exception as e:
