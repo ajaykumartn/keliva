@@ -56,6 +56,11 @@ class GrammarCheckResponse(BaseModel):
     has_errors: bool
 
 
+@router.get("/test")
+async def test_grammar_router():
+    """Test endpoint to verify grammar router is working"""
+    return {"message": "Grammar router is working!", "timestamp": "2025-01-05"}
+
 @router.post("/check", response_model=GrammarCheckResponse)
 async def check_grammar(request: GrammarCheckRequest):
     """
