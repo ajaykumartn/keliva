@@ -32,13 +32,13 @@ This guide will help you deploy KeLiva with PostgreSQL database on Render.com. T
 
    ```bash
    # Database Configuration (Your PostgreSQL Database)
-   DATABASE_URL=postgresql://keliva_user:RtUpedFGMfPjyU7QP70VCbGoAsA9qPcS@dpg-d5dtdcf5r7bs73c6eap0-a.oregon-postgres.render.com/keliva
+   DATABASE_URL=postgresql://keliva_user:your_password@your_host.oregon-postgres.render.com/keliva
    
-   # API Keys
-   GROQ_API_KEY=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
-   TELEGRAM_BOT_TOKEN=8400809403:AAGulVzMo4raH8ITngvzdDstGKgvBRn5Dmw
+   # API Keys (Replace with your actual keys)
+   GROQ_API_KEY=your_groq_api_key_here
+   TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
    
-   # Security
+   # Security (Generate strong keys for production)
    JWT_SECRET_KEY=your-super-secret-jwt-key-change-in-production
    SECRET_KEY=your-super-secret-key-change-in-production
    
