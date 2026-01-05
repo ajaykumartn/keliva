@@ -72,9 +72,13 @@ async def check_grammar(request: GrammarCheckRequest):
     Raises:
         HTTPException: If API key is not configured or analysis fails
     """
+    print(f"DEBUG: Grammar router called with text: {request.text}")
+    
     try:
         guardian = get_grammar_guardian()
         analysis = await guardian.analyze_text(request.text)
+        
+        print(f"DEBUG: Analysis completed - errors: {len(analysis.errors)}, score: {analysis.overall_score}")
         
         # Convert to response model
         error_responses = [
@@ -90,7 +94,7 @@ async def check_grammar(request: GrammarCheckRequest):
             for error in analysis.errors
         ]
         
-        return GrammarCheckResponse(
+        response = GrammarCheckResponse(
             original_text=analysis.original_text,
             corrected_text=analysis.corrected_text,
             errors=error_responses,
@@ -98,12 +102,17 @@ async def check_grammar(request: GrammarCheckRequest):
             has_errors=len(analysis.errors) > 0
         )
         
+        print(f"DEBUG: Returning response with {len(error_responses)} errors")
+        return response
+        
     except ValueError as e:
+        print(f"DEBUG: ValueError in grammar check: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
     except Exception as e:
+        print(f"DEBUG: Exception in grammar check: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Grammar analysis failed: {str(e)}"
