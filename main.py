@@ -611,6 +611,7 @@ async def auth_register(request: Request):
             raise HTTPException(status_code=400, detail="Username, password, and email required")
         
         # Try to create user (handle database connection issues)
+        user_id = None
         try:
             user_id = user_service.create_user(
                 telegram_id=None,
@@ -620,7 +621,10 @@ async def auth_register(request: Request):
             )
         except Exception as db_error:
             logger.error(f"Database error during registration: {db_error}")
-            # For now, return success even if database fails (demo mode)
+        
+        # If database failed or returned None, use demo mode
+        if not user_id:
+            logger.info("Using demo mode for registration")
             user_id = f"demo_user_{int(datetime.now().timestamp())}"
         
         if user_id:

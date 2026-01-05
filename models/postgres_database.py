@@ -83,6 +83,10 @@ class PostgreSQLManager:
     def init_db(self):
         """Initialize database connection"""
         try:
+            if not self.database_url:
+                logger.warning("No DATABASE_URL provided, database will not be available")
+                return
+                
             self.engine = create_engine(self.database_url, pool_pre_ping=True)
             self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
             
@@ -91,11 +95,16 @@ class PostgreSQLManager:
             logger.info("PostgreSQL database initialized")
         except Exception as e:
             logger.error(f"Failed to initialize PostgreSQL: {e}")
-            raise
+            # Don't raise the exception, just log it
+            self.engine = None
+            self.SessionLocal = None
     
     @contextmanager
     def get_session(self):
         """Get database session with context manager"""
+        if not self.SessionLocal:
+            raise Exception("Database not initialized")
+            
         session = self.SessionLocal()
         try:
             yield session
@@ -117,6 +126,11 @@ class UserService:
                    email: str = None, password: str = None) -> Optional[str]:
         """Create a new user"""
         try:
+            # Check if database is initialized
+            if not self.db_manager.engine or not self.db_manager.SessionLocal:
+                logger.warning("Database not initialized, skipping user creation")
+                return None
+                
             with self.db_manager.get_session() as session:
                 # Hash password if provided
                 password_hash = None
