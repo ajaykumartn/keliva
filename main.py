@@ -106,7 +106,7 @@ async def startup_event():
     
     # Initialize PostgreSQL database
     try:
-        await db_manager.init_pool()
+        db_manager.init_db()
         logger.info("PostgreSQL database initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")

@@ -1,27 +1,75 @@
 """
 PostgreSQL Database Configuration and Models for KeLiva
-Production-ready database setup with proper connection pooling and async support
+Production-ready database setup with SQLAlchemy and psycopg2
 Compatible with SQLAlchemy 1.4 and Pydantic v1
 """
 import os
-import asyncio
 from datetime import datetime
-from typing import Optional, List, Dict, Any, AsyncGenerator
-import asyncpg
+from typing import Optional, List, Dict, Any
 import json
 import uuid
 import hashlib
 import secrets
-from contextlib import asynccontextmanager
 import logging
+from sqlalchemy import create_engine, Column, String, DateTime, Text, Boolean, Integer
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.dialects.postgresql import UUID
+from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
 
+Base = declarative_base()
+
+class User(Base):
+    __tablename__ = "users"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    telegram_id = Column(String(50), unique=True, index=True)
+    username = Column(String(100))
+    email = Column(String(255), unique=True, index=True)
+    password_hash = Column(String(255))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_active = Column(Boolean, default=True)
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), index=True)
+    message = Column(Text)
+    response = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    session_id = Column(String(100), index=True)
+
+class GrammarCorrection(Base):
+    __tablename__ = "grammar_corrections"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), index=True)
+    original_text = Column(Text)
+    corrected_text = Column(Text)
+    corrections = Column(Text)  # JSON string
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class VoicePractice(Base):
+    __tablename__ = "voice_practices"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), index=True)
+    text = Column(Text)
+    audio_url = Column(String(500))
+    feedback = Column(Text)
+    score = Column(Integer)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 class PostgreSQLManager:
-    """PostgreSQL database manager with connection pooling"""
+    """PostgreSQL database manager with SQLAlchemy"""
     
     def __init__(self):
-        self.pool: Optional[asyncpg.Pool] = None
+        self.engine = None
+        self.SessionLocal = None
         self.database_url = os.getenv("DATABASE_URL")
         if not self.database_url:
             # Fallback to individual components
@@ -32,22 +80,178 @@ class PostgreSQLManager:
             password = os.getenv("DB_PASSWORD", "")
             self.database_url = f"postgresql://{user}:{password}@{host}:{port}/{database}"
     
-    async def init_pool(self):
-        """Initialize connection pool"""
+    def init_db(self):
+        """Initialize database connection"""
         try:
-            self.pool = await asyncpg.create_pool(
-                self.database_url,
-                min_size=1,
-                max_size=10,
-                command_timeout=60
-            )
-            logger.info("PostgreSQL connection pool initialized")
-            await self.init_schema()
+            self.engine = create_engine(self.database_url, pool_pre_ping=True)
+            self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
+            
+            # Create tables
+            Base.metadata.create_all(bind=self.engine)
+            logger.info("PostgreSQL database initialized")
         except Exception as e:
-            logger.error(f"Failed to initialize PostgreSQL pool: {e}")
+            logger.error(f"Failed to initialize PostgreSQL: {e}")
             raise
     
-    async def close_pool(self):
+    @contextmanager
+    def get_session(self):
+        """Get database session with context manager"""
+        session = self.SessionLocal()
+        try:
+            yield session
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Database session error: {e}")
+            raise
+        finally:
+            session.close()
+
+class UserService:
+    """User management service"""
+    
+    def __init__(self, db_manager: PostgreSQLManager):
+        self.db_manager = db_manager
+    
+    def create_user(self, telegram_id: str = None, username: str = None, 
+                   email: str = None, password: str = None) -> Optional[str]:
+        """Create a new user"""
+        try:
+            with self.db_manager.get_session() as session:
+                # Hash password if provided
+                password_hash = None
+                if password:
+                    import bcrypt
+                    password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                
+                user = User(
+                    telegram_id=telegram_id,
+                    username=username,
+                    email=email,
+                    password_hash=password_hash
+                )
+                session.add(user)
+                session.flush()
+                return str(user.id)
+        except Exception as e:
+            logger.error(f"Failed to create user: {e}")
+            return None
+    
+    def get_user_by_telegram_id(self, telegram_id: str) -> Optional[Dict[str, Any]]:
+        """Get user by Telegram ID"""
+        try:
+            with self.db_manager.get_session() as session:
+                user = session.query(User).filter(User.telegram_id == telegram_id).first()
+                if user:
+                    return {
+                        "id": str(user.id),
+                        "telegram_id": user.telegram_id,
+                        "username": user.username,
+                        "email": user.email,
+                        "created_at": user.created_at.isoformat(),
+                        "is_active": user.is_active
+                    }
+                return None
+        except Exception as e:
+            logger.error(f"Failed to get user: {e}")
+            return None
+
+class ConversationService:
+    """Conversation management service"""
+    
+    def __init__(self, db_manager: PostgreSQLManager):
+        self.db_manager = db_manager
+    
+    def save_conversation(self, user_id: str, message: str, response: str, 
+                         session_id: str = None) -> bool:
+        """Save conversation to database"""
+        try:
+            with self.db_manager.get_session() as session:
+                conversation = Conversation(
+                    user_id=uuid.UUID(user_id),
+                    message=message,
+                    response=response,
+                    session_id=session_id or str(uuid.uuid4())
+                )
+                session.add(conversation)
+                return True
+        except Exception as e:
+            logger.error(f"Failed to save conversation: {e}")
+            return False
+    
+    def get_user_conversations(self, user_id: str, limit: int = 20) -> List[Dict[str, Any]]:
+        """Get user conversations"""
+        try:
+            with self.db_manager.get_session() as session:
+                conversations = session.query(Conversation)\
+                    .filter(Conversation.user_id == uuid.UUID(user_id))\
+                    .order_by(Conversation.created_at.desc())\
+                    .limit(limit).all()
+                
+                return [{
+                    "id": str(conv.id),
+                    "message": conv.message,
+                    "response": conv.response,
+                    "created_at": conv.created_at.isoformat(),
+                    "session_id": conv.session_id
+                } for conv in conversations]
+        except Exception as e:
+            logger.error(f"Failed to get conversations: {e}")
+            return []
+
+class GrammarService:
+    """Grammar correction service"""
+    
+    def __init__(self, db_manager: PostgreSQLManager):
+        self.db_manager = db_manager
+    
+    def save_grammar_correction(self, user_id: str, original_text: str, 
+                              corrected_text: str, corrections: List[Dict]) -> bool:
+        """Save grammar correction"""
+        try:
+            with self.db_manager.get_session() as session:
+                correction = GrammarCorrection(
+                    user_id=uuid.UUID(user_id),
+                    original_text=original_text,
+                    corrected_text=corrected_text,
+                    corrections=json.dumps(corrections)
+                )
+                session.add(correction)
+                return True
+        except Exception as e:
+            logger.error(f"Failed to save grammar correction: {e}")
+            return False
+
+class VoiceService:
+    """Voice practice service"""
+    
+    def __init__(self, db_manager: PostgreSQLManager):
+        self.db_manager = db_manager
+    
+    def save_voice_practice(self, user_id: str, text: str, audio_url: str = None, 
+                          feedback: str = None, score: int = None) -> bool:
+        """Save voice practice session"""
+        try:
+            with self.db_manager.get_session() as session:
+                practice = VoicePractice(
+                    user_id=uuid.UUID(user_id),
+                    text=text,
+                    audio_url=audio_url,
+                    feedback=feedback,
+                    score=score
+                )
+                session.add(practice)
+                return True
+        except Exception as e:
+            logger.error(f"Failed to save voice practice: {e}")
+            return False
+
+# Initialize services
+db_manager = PostgreSQLManager()
+user_service = UserService(db_manager)
+conversation_service = ConversationService(db_manager)
+grammar_service = GrammarService(db_manager)
+voice_service = VoiceService(db_manager)
         """Close connection pool"""
         if self.pool:
             await self.pool.close()
