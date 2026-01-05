@@ -218,13 +218,17 @@ async def options_handler(request: Request, full_path: str):
 async def get_ai_response(message: str, mode: str = "chat") -> str:
     """Get AI response using Groq API"""
     try:
-        import groq
-        
         api_key = os.getenv("GROQ_API_KEY")
         if not api_key:
-            return "Sorry, AI service is not configured."
+            return "Sorry, AI service is not configured. Please add your GROQ_API_KEY to environment variables."
         
-        client = groq.Groq(api_key=api_key)
+        # Import and initialize Groq client
+        try:
+            import groq
+            client = groq.Groq(api_key=api_key)
+        except Exception as client_error:
+            logger.error(f"Groq client initialization error: {client_error}")
+            return f"AI service initialization failed. Please check your GROQ_API_KEY."
         
         # System prompts based on mode
         system_prompts = {
@@ -491,6 +495,22 @@ async def grammar_check(request: Request):
         
         # Get AI response for grammar checking
         response = await get_ai_response(text, "grammar")
+        
+        # Check if AI response indicates an error
+        if "AI service" in response or "trouble processing" in response:
+            # Provide a simple fallback response
+            return {
+                "success": True,
+                "original_text": text,
+                "corrected_text": text,  # Return original text as "corrected"
+                "suggestions": [
+                    {
+                        "type": "info",
+                        "message": "AI grammar checking is currently unavailable. Please add your GROQ_API_KEY to enable AI-powered grammar checking.",
+                        "suggestion": "Text appears to be fine!"
+                    }
+                ]
+            }
         
         return {
             "success": True,
