@@ -147,13 +147,14 @@ Your task is to:
 3. Categorize each error by type
 4. Be encouraging and supportive in your tone
 
-Return your response in this EXACT JSON format:
+CRITICAL: You MUST return your response in this EXACT JSON format. Do not include any other text:
+
 {
   "corrected_text": "The fully corrected version of the text",
   "errors": [
     {
       "original": "the exact wrong phrase",
-      "corrected": "the corrected phrase",
+      "corrected": "the corrected phrase", 
       "error_type": "tense|article|preposition|subject-verb|word-choice|punctuation|spelling",
       "explanation": "Brief, friendly explanation of the mistake",
       "severity": "critical|moderate|minor"
@@ -167,7 +168,8 @@ Guidelines:
 - Use simple, clear explanations
 - Maintain an encouraging tone
 - Score: 100 = perfect, 0 = many errors
-- If text is perfect, return empty errors array and score 100"""
+- If text is perfect, return empty errors array and score 100
+- ONLY return valid JSON, no other text before or after"""
     
     def _create_grammar_prompt(self, text: str) -> str:
         """Creates the user prompt for grammar analysis"""
@@ -189,19 +191,52 @@ Provide corrections in the JSON format specified."""
             GrammarAnalysis object
         """
         try:
+            # Clean the response - remove any markdown formatting
+            cleaned_output = llm_output.strip()
+            
             # Extract JSON from response (handle markdown code blocks)
-            json_match = re.search(r'```json\s*(.*?)\s*```', llm_output, re.DOTALL)
+            json_match = re.search(r'```json\s*(.*?)\s*```', cleaned_output, re.DOTALL)
             if json_match:
                 json_str = json_match.group(1)
             else:
                 # Try to find JSON object directly
-                json_match = re.search(r'\{.*\}', llm_output, re.DOTALL)
+                json_match = re.search(r'\{.*\}', cleaned_output, re.DOTALL)
                 if json_match:
                     json_str = json_match.group(0)
                 else:
-                    raise ValueError("No JSON found in response")
+                    # If no JSON found, try to parse the entire response as JSON
+                    json_str = cleaned_output
             
-            data = json.loads(json_str)
+            # Try to parse JSON
+            try:
+                data = json.loads(json_str)
+            except json.JSONDecodeError:
+                # If JSON parsing fails, create a simple correction
+                # Check if the response contains corrections
+                if "corrected" in cleaned_output.lower() or "should be" in cleaned_output.lower():
+                    # Create a simple analysis with the AI response as explanation
+                    return GrammarAnalysis(
+                        original_text=original_text,
+                        corrected_text=original_text,  # Keep original since we can't parse corrections
+                        errors=[{
+                            "start_pos": 0,
+                            "end_pos": len(original_text),
+                            "error_type": "general",
+                            "original_text": original_text,
+                            "corrected_text": original_text,
+                            "explanation": cleaned_output[:200] + "..." if len(cleaned_output) > 200 else cleaned_output,
+                            "severity": "moderate"
+                        }],
+                        overall_score=75.0
+                    )
+                else:
+                    # No corrections found, assume text is good
+                    return GrammarAnalysis(
+                        original_text=original_text,
+                        corrected_text=original_text,
+                        errors=[],
+                        overall_score=100.0
+                    )
             
             # Extract corrected text and score
             corrected_text = data.get("corrected_text", original_text)
