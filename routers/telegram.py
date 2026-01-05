@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any
 import os
 import hmac
 import hashlib
-import httpx
+import requests
 import logging
 import json
 import re

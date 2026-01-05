@@ -4,7 +4,7 @@ Handles audio transcription for voice messages
 """
 import os
 import logging
-import httpx
+import requests
 from typing import Optional
 import tempfile
 import subprocess

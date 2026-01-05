@@ -55,13 +55,12 @@ class KeepAliveManager:
             return
             
         try:
-            import httpx
-            async with httpx.AsyncClient() as client:
-                response = await client.get(f"{self.base_url}/api/health")
-                if response.status_code == 200:
-                    logger.info("Keep-alive ping successful")
-                else:
-                    logger.warning(f"Keep-alive ping failed with status: {response.status_code}")
+            import requests
+            response = requests.get(f"{self.base_url}/api/health", timeout=30)
+            if response.status_code == 200:
+                logger.info("Keep-alive ping successful")
+            else:
+                logger.warning(f"Keep-alive ping failed with status: {response.status_code}")
         except Exception as e:
             logger.error(f"Keep-alive ping error: {str(e)}")
     
@@ -400,16 +399,15 @@ async def telegram_webhook(request: Request):
                 # Send response back to Telegram
                 bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
                 if bot_token:
-                    import httpx
-                    async with httpx.AsyncClient() as client:
-                        await client.post(
-                            f"https://api.telegram.org/bot{bot_token}/sendMessage",
-                            json={
-                                "chat_id": chat_id,
-                                "text": response_text
-                            },
-                            timeout=10.0
-                        )
+                    import requests
+                    requests.post(
+                        f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                        json={
+                            "chat_id": chat_id,
+                            "text": response_text
+                        },
+                        timeout=10.0
+                    )
                     
                     logger.info(f"AI response sent to Telegram chat {chat_id}")
         
