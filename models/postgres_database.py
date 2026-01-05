@@ -251,6 +251,11 @@ class GrammarService:
                               corrected_text: str, corrections: List[Dict]) -> bool:
         """Save grammar correction"""
         try:
+            # Check if database is initialized
+            if not self.db_manager.engine or not self.db_manager.SessionLocal:
+                logger.warning("Database not initialized, skipping grammar correction save")
+                return False
+                
             with self.db_manager.get_session() as session:
                 correction = GrammarCorrection(
                     user_id=uuid.UUID(user_id),
@@ -263,6 +268,31 @@ class GrammarService:
         except Exception as e:
             logger.error(f"Failed to save grammar correction: {e}")
             return False
+    
+    def get_user_grammar_history(self, user_id: str, limit: int = 20) -> List[Dict[str, Any]]:
+        """Get user's grammar correction history"""
+        try:
+            # Check if database is initialized
+            if not self.db_manager.engine or not self.db_manager.SessionLocal:
+                logger.warning("Database not initialized, returning empty grammar history")
+                return []
+                
+            with self.db_manager.get_session() as session:
+                corrections = session.query(GrammarCorrection)\
+                    .filter(GrammarCorrection.user_id == uuid.UUID(user_id))\
+                    .order_by(GrammarCorrection.created_at.desc())\
+                    .limit(limit).all()
+                
+                return [{
+                    "id": str(corr.id),
+                    "original_text": corr.original_text,
+                    "corrected_text": corr.corrected_text,
+                    "corrections": json.loads(corr.corrections) if corr.corrections else [],
+                    "created_at": corr.created_at.isoformat()
+                } for corr in corrections]
+        except Exception as e:
+            logger.error(f"Failed to get grammar history: {e}")
+            return []
 
 class VoiceService:
     """Voice practice service"""

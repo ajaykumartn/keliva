@@ -461,7 +461,14 @@ async def get_user_conversations(request: Request, user_id: str, limit: int = 20
 async def get_grammar_history(request: Request, user_id: str, limit: int = 20):
     """Get user's grammar correction history"""
     try:
-        history = await grammar_service.get_user_grammar_history(user_id, limit)
+        # Handle database connection issues
+        try:
+            history = grammar_service.get_user_grammar_history(user_id, limit)
+        except Exception as db_error:
+            logger.error(f"Database error getting grammar history: {db_error}")
+            # Return empty history for demo mode
+            history = []
+        
         return {
             "success": True,
             "grammar_history": history
@@ -469,6 +476,38 @@ async def get_grammar_history(request: Request, user_id: str, limit: int = 20):
     except Exception as e:
         logger.error(f"Grammar history error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to get grammar history")
+
+# Grammar check endpoint
+@app.post("/api/grammar/check")
+@limiter.limit("20/minute")
+async def grammar_check(request: Request):
+    """Check grammar and provide corrections"""
+    try:
+        data = await request.json()
+        text = data.get("text", "")
+        
+        if not text:
+            raise HTTPException(status_code=400, detail="Text is required")
+        
+        # Get AI response for grammar checking
+        response = await get_ai_response(text, "grammar")
+        
+        return {
+            "success": True,
+            "original_text": text,
+            "corrected_text": response,
+            "suggestions": [
+                {
+                    "type": "grammar",
+                    "message": "AI-powered grammar check completed",
+                    "suggestion": response
+                }
+            ]
+        }
+        
+    except Exception as e:
+        logger.error(f"Grammar check error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to check grammar")
 
 # Voice practice endpoints
 @app.post("/api/voice/practice")
