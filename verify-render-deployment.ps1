@@ -1,94 +1,101 @@
-# KeLiva Render Deployment Verification Script
-param(
-    [Parameter(Mandatory=$true)]
-    [string]$BackendUrl
-)
+#!/usr/bin/env pwsh
+# Render.com Deployment Verification Script for KeLiva
 
-Write-Host "Verifying KeLiva Deployment on Render.com" -ForegroundColor Green
-Write-Host "Backend URL: $BackendUrl" -ForegroundColor Cyan
+Write-Host "🚀 KeLiva Render.com Deployment Verification" -ForegroundColor Green
 Write-Host "=============================================" -ForegroundColor Green
 
-# Test endpoints
-$endpoints = @(
-    @{ Path = "/api/health"; Name = "Health Check" },
-    @{ Path = "/"; Name = "Root Endpoint" },
-    @{ Path = "/api/test"; Name = "Test Endpoint" }
-)
+# Configuration
+$RENDER_SERVICE_URL = "https://keliva-backend.onrender.com"
+$MAX_RETRIES = 10
+$RETRY_DELAY = 30
 
-$allPassed = $true
-
-foreach ($endpoint in $endpoints) {
-    $url = "$BackendUrl$($endpoint.Path)"
-    Write-Host ""
-    Write-Host "Testing $($endpoint.Name): $url" -ForegroundColor Yellow
+function Test-Endpoint {
+    param(
+        [string]$Url,
+        [string]$Description,
+        [int]$ExpectedStatus = 200
+    )
     
     try {
-        $response = Invoke-RestMethod -Uri $url -Method GET -TimeoutSec 30
-        Write-Host "SUCCESS - $($endpoint.Name)" -ForegroundColor Green
+        Write-Host "Testing $Description..." -ForegroundColor Yellow
+        $response = Invoke-WebRequest -Uri $Url -Method GET -TimeoutSec 30
         
-        if ($endpoint.Path -eq "/api/health") {
-            Write-Host "   Status: $($response.status)" -ForegroundColor Gray
-            Write-Host "   Database: $($response.database)" -ForegroundColor Gray
-        }
-        
-        if ($endpoint.Path -eq "/api/test") {
-            Write-Host "   Message: $($response.message)" -ForegroundColor Gray
-            Write-Host "   Security: $($response.security)" -ForegroundColor Gray
+        if ($response.StatusCode -eq $ExpectedStatus) {
+            Write-Host "✅ $Description - OK (Status: $($response.StatusCode))" -ForegroundColor Green
+            return $true
+        } else {
+            Write-Host "❌ $Description - Unexpected status: $($response.StatusCode)" -ForegroundColor Red
+            return $false
         }
     }
     catch {
-        Write-Host "FAILED - $($endpoint.Name)" -ForegroundColor Red
-        Write-Host "   Error: $($_.Exception.Message)" -ForegroundColor Red
-        $allPassed = $false
+        Write-Host "❌ $Description - Error: $($_.Exception.Message)" -ForegroundColor Red
+        return $false
     }
 }
 
-Write-Host ""
-Write-Host "Security Features Check:" -ForegroundColor Yellow
-
-# Check security headers
-try {
-    $headers = Invoke-WebRequest -Uri "$BackendUrl/api/health" -Method GET -TimeoutSec 30
+function Wait-ForDeployment {
+    Write-Host "⏳ Waiting for Render.com deployment to be ready..." -ForegroundColor Yellow
     
-    $securityHeaders = @(
-        "X-Content-Type-Options",
-        "X-Frame-Options", 
-        "X-XSS-Protection",
-        "Strict-Transport-Security"
-    )
-    
-    foreach ($header in $securityHeaders) {
-        if ($headers.Headers[$header]) {
-            Write-Host "SUCCESS - $header present" -ForegroundColor Green
-        } else {
-            Write-Host "MISSING - $header" -ForegroundColor Red
+    for ($i = 1; $i -le $MAX_RETRIES; $i++) {
+        Write-Host "Attempt $i/$MAX_RETRIES - Checking health endpoint..." -ForegroundColor Cyan
+        
+        if (Test-Endpoint "$RENDER_SERVICE_URL/health" "Health Check") {
+            Write-Host "🎉 Deployment is ready!" -ForegroundColor Green
+            return $true
+        }
+        
+        if ($i -lt $MAX_RETRIES) {
+            Write-Host "⏳ Waiting $RETRY_DELAY seconds before next attempt..." -ForegroundColor Yellow
+            Start-Sleep -Seconds $RETRY_DELAY
         }
     }
-}
-catch {
-    Write-Host "Could not check security headers" -ForegroundColor Red
+    
+    Write-Host "❌ Deployment failed to become ready after $MAX_RETRIES attempts" -ForegroundColor Red
+    return $false
 }
 
-Write-Host ""
-Write-Host "Keep-Alive System Check:" -ForegroundColor Yellow
-Write-Host "The keep-alive system will start automatically after deployment."
-Write-Host "Check your Render logs for 'Keep-alive ping successful' messages."
+# Main verification process
+Write-Host "🔍 Starting deployment verification..." -ForegroundColor Cyan
 
-Write-Host ""
-if ($allPassed) {
-    Write-Host "Deployment Verification PASSED!" -ForegroundColor Green
-    Write-Host "Your KeLiva backend is ready for production use." -ForegroundColor Green
-    Write-Host ""
-    Write-Host "Next steps:" -ForegroundColor Cyan
-    Write-Host "1. Update frontend/.env with: VITE_API_URL=$BackendUrl"
-    Write-Host "2. Deploy frontend to Vercel"
-    Write-Host "3. Set up UptimeRobot monitoring (optional)"
+if (-not (Wait-ForDeployment)) {
+    Write-Host "❌ Deployment verification failed" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "`n🧪 Running comprehensive endpoint tests..." -ForegroundColor Cyan
+
+$tests = @(
+    @{ Url = "$RENDER_SERVICE_URL/"; Description = "Root endpoint" },
+    @{ Url = "$RENDER_SERVICE_URL/health"; Description = "Health check" },
+    @{ Url = "$RENDER_SERVICE_URL/docs"; Description = "API documentation" },
+    @{ Url = "$RENDER_SERVICE_URL/api/v1/status"; Description = "API status" }
+)
+
+$passedTests = 0
+$totalTests = $tests.Count
+
+foreach ($test in $tests) {
+    if (Test-Endpoint $test.Url $test.Description) {
+        $passedTests++
+    }
+    Start-Sleep -Seconds 2
+}
+
+Write-Host "`n📊 Test Results:" -ForegroundColor Cyan
+Write-Host "Passed: $passedTests/$totalTests tests" -ForegroundColor $(if ($passedTests -eq $totalTests) { "Green" } else { "Yellow" })
+
+if ($passedTests -eq $totalTests) {
+    Write-Host "`n🎉 All tests passed! Deployment is successful." -ForegroundColor Green
+    Write-Host "🌐 Backend URL: $RENDER_SERVICE_URL" -ForegroundColor Cyan
+    Write-Host "📚 API Docs: $RENDER_SERVICE_URL/docs" -ForegroundColor Cyan
 } else {
-    Write-Host "Deployment Verification FAILED!" -ForegroundColor Red
-    Write-Host "Please check the errors above and redeploy." -ForegroundColor Red
+    Write-Host "`n⚠️  Some tests failed. Check the logs above for details." -ForegroundColor Yellow
 }
 
-Write-Host ""
-Write-Host "Monitoring URLs:" -ForegroundColor Magenta
-Write-Host "Health Check: $BackendUrl/api/health"
-Write-Host "API Test: $BackendUrl/api/test"
+Write-Host "`n🔗 Useful Links:" -ForegroundColor Cyan
+Write-Host "• Render Dashboard: https://dashboard.render.com/" -ForegroundColor White
+Write-Host "• Service Logs: Check your Render dashboard for detailed logs" -ForegroundColor White
+Write-Host "• API Documentation: $RENDER_SERVICE_URL/docs" -ForegroundColor White
+
+Write-Host "`nVerification complete! 🚀" -ForegroundColor Green

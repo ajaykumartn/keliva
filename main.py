@@ -257,6 +257,12 @@ async def health_check(request: Request):
         "message": "KeLiva API is running with 24/7 keep-alive"
     }
 
+@app.get("/health")
+@limiter.limit("60/minute")
+async def simple_health_check(request: Request):
+    """Simple health check endpoint for Render.com"""
+    return {"status": "ok"}
+
 @app.get("/")
 @limiter.limit("30/minute")
 async def root(request: Request):
