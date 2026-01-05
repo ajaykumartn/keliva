@@ -1,6 +1,7 @@
 """
 PostgreSQL Database Configuration and Models for KeLiva
 Production-ready database setup with proper connection pooling and async support
+Compatible with SQLAlchemy 1.4 and Pydantic v1
 """
 import os
 import asyncio
