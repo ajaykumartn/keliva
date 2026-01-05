@@ -137,6 +137,34 @@ class UserService:
             logger.error(f"Failed to create user: {e}")
             return None
     
+    def authenticate_user(self, username: str, password: str) -> Optional[Dict[str, Any]]:
+        """Authenticate user by username or email"""
+        try:
+            with self.db_manager.get_session() as session:
+                # Try username first
+                user = session.query(User).filter(User.username == username, User.is_active == True).first()
+                
+                # If not found, try email
+                if not user:
+                    user = session.query(User).filter(User.email == username, User.is_active == True).first()
+                
+                if user and user.password_hash:
+                    # Verify password
+                    import bcrypt
+                    if bcrypt.checkpw(password.encode('utf-8'), user.password_hash.encode('utf-8')):
+                        return {
+                            "id": str(user.id),
+                            "telegram_id": user.telegram_id,
+                            "username": user.username,
+                            "email": user.email,
+                            "created_at": user.created_at.isoformat(),
+                            "is_active": user.is_active
+                        }
+                return None
+        except Exception as e:
+            logger.error(f"Failed to authenticate user: {e}")
+            return None
+
     def get_user_by_telegram_id(self, telegram_id: str) -> Optional[Dict[str, Any]]:
         """Get user by Telegram ID"""
         try:
