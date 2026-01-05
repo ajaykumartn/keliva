@@ -224,8 +224,12 @@ async def get_ai_response(message: str, mode: str = "chat") -> str:
         
         # Import and initialize Groq client
         try:
-            import groq
-            client = groq.Groq(api_key=api_key)
+            from groq import Groq
+            # Initialize with minimal parameters to avoid proxy issues
+            client = Groq(
+                api_key=api_key,
+                timeout=30.0
+            )
         except Exception as client_error:
             logger.error(f"Groq client initialization error: {client_error}")
             return f"AI service initialization failed. Please check your GROQ_API_KEY."
