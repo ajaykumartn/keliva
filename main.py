@@ -36,6 +36,11 @@ KEEP_ALIVE_INTERVAL = int(os.getenv("KEEP_ALIVE_INTERVAL", "840"))  # 14 minutes
 # CORS Configuration
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173,https://keliva.vercel.app,https://keliva-frontend.vercel.app").split(",")
 
+# Clean up origins (remove whitespace)
+ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS if origin.strip()]
+
+logger.info(f"CORS allowed origins: {ALLOWED_ORIGINS}")
+
 # Keep-Alive System for 24/7 Uptime
 class KeepAliveManager:
     """Manages self-ping to prevent Render.com from sleeping"""
@@ -195,7 +200,7 @@ async def log_requests(request: Request, call_next):
 # Security: CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=["*"],  # Temporarily allow all origins for testing
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
