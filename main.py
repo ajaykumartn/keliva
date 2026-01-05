@@ -220,7 +220,10 @@ async def get_ai_response(message: str, mode: str = "chat") -> str:
     try:
         api_key = os.getenv("GROQ_API_KEY")
         if not api_key:
+            logger.warning("GROQ_API_KEY not found in environment variables")
             return "Sorry, AI service is not configured. Please add your GROQ_API_KEY to environment variables."
+        
+        logger.info(f"GROQ_API_KEY found: {api_key[:10]}...{api_key[-4:] if len(api_key) > 14 else 'short_key'}")
         
         # Try using requests directly to avoid client initialization issues
         try:
@@ -256,7 +259,9 @@ async def get_ai_response(message: str, mode: str = "chat") -> str:
             
             if response.status_code == 200:
                 result = response.json()
-                return result["choices"][0]["message"]["content"]
+                ai_response = result["choices"][0]["message"]["content"]
+                logger.info(f"AI response received: {ai_response[:100]}...")
+                return ai_response
             else:
                 logger.error(f"Groq API error: {response.status_code} - {response.text}")
                 return "Sorry, AI service is temporarily unavailable."
