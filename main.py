@@ -222,38 +222,48 @@ async def get_ai_response(message: str, mode: str = "chat") -> str:
         if not api_key:
             return "Sorry, AI service is not configured. Please add your GROQ_API_KEY to environment variables."
         
-        # Import and initialize Groq client
+        # Try using requests directly to avoid client initialization issues
         try:
-            from groq import Groq
-            # Initialize with minimal parameters to avoid proxy issues
-            client = Groq(
-                api_key=api_key,
-                timeout=30.0
+            import requests
+            
+            # System prompts based on mode
+            system_prompts = {
+                "chat": "You are KeLiva, a helpful and friendly AI assistant. Be conversational and helpful.",
+                "grammar": "You are KeLiva, a grammar expert. Check the text for grammar errors and provide corrections with explanations. Be clear and educational.",
+                "voice": "You are KeLiva, a pronunciation and speaking coach. Help users improve their speaking skills."
+            }
+            
+            system_prompt = system_prompts.get(mode, system_prompts["chat"])
+            
+            # Use Groq's OpenAI-compatible API directly
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "llama3-8b-8192",
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": message}
+                    ],
+                    "max_tokens": 1000,
+                    "temperature": 0.7
+                },
+                timeout=30
             )
-        except Exception as client_error:
-            logger.error(f"Groq client initialization error: {client_error}")
-            return f"AI service initialization failed. Please check your GROQ_API_KEY."
-        
-        # System prompts based on mode
-        system_prompts = {
-            "chat": "You are KeLiva, a helpful and friendly AI assistant. Be conversational and helpful.",
-            "grammar": "You are KeLiva, a grammar expert. Check the text for grammar errors and provide corrections with explanations. Be clear and educational.",
-            "voice": "You are KeLiva, a pronunciation and speaking coach. Help users improve their speaking skills."
-        }
-        
-        system_prompt = system_prompts.get(mode, system_prompts["chat"])
-        
-        completion = client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": message}
-            ],
-            model="llama3-8b-8192",
-            max_tokens=1000,
-            temperature=0.7
-        )
-        
-        return completion.choices[0].message.content
+            
+            if response.status_code == 200:
+                result = response.json()
+                return result["choices"][0]["message"]["content"]
+            else:
+                logger.error(f"Groq API error: {response.status_code} - {response.text}")
+                return "Sorry, AI service is temporarily unavailable."
+                
+        except Exception as api_error:
+            logger.error(f"Groq API request error: {api_error}")
+            return "Sorry, AI service is temporarily unavailable."
         
     except Exception as e:
         logger.error(f"AI response error: {str(e)}")
